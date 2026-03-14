@@ -848,7 +848,7 @@ export const legacyService = {
         return false;
       }
 
-      setWalletContext(beneficiary.legacy_plans[0].wallet_address);
+      setWalletContext((beneficiary.legacy_plans as any).wallet_address);
 
       const { error } = await supabase
         .from("beneficiaries")
@@ -892,7 +892,7 @@ export const legacyService = {
         return null;
       }
 
-      setWalletContext(beneficiary.legacy_plans[0].wallet_address);
+      setWalletContext((beneficiary.legacy_plans as any).wallet_address);
 
       const { data, error } = await supabase
         .from("beneficiaries")

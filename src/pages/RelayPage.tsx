@@ -1,30 +1,43 @@
-import React, { useState, useEffect, lazy } from 'react';
-import { Plus, Send } from 'lucide-react';
-import { RelayItem } from '../types/relay';
-import { useWalletTracking } from '../hooks/useWalletTracking';
-import { relayService } from '../lib/supabase';
-import { AccountId, Client, PrivateKey, TopicCreateTransaction, TopicId, TopicMessageSubmitTransaction } from '@hashgraph/sdk';
-import { parseEther } from 'viem';
-import { useSendTransaction } from 'wagmi';
+import React, { useState, useEffect, lazy, Suspense } from "react";
+import { Plus, Send } from "lucide-react";
+import { RelayItem } from "../types/relay";
+import { useWalletTracking } from "../hooks/useWalletTracking";
+import { relayService } from "../lib/supabase";
+import {
+  AccountId,
+  Client,
+  PrivateKey,
+  TopicCreateTransaction,
+  TopicId,
+  TopicMessageSubmitTransaction,
+} from "@hashgraph/sdk";
+import { parseEther } from "viem";
+import { useSendTransaction } from "wagmi";
 
 // Dynamic imports
-const AestheticNavbar = lazy(() => import('../components/AestheticNavbar'));
-const RelayTable = lazy(() => import('../components/RelayTable'));
-const CreateRelayModal = lazy(() => import('../components/CreateRelayModal'));
-const Toast = lazy(() => import('../components/Toast'));
+const AestheticNavbar = lazy(() => import("../components/AestheticNavbar"));
+const RelayTable = lazy(() => import("../components/RelayTable"));
+const CreateRelayModal = lazy(() => import("../components/CreateRelayModal"));
+const Toast = lazy(() => import("../components/Toast"));
 
 // Your account ID and private key from string value
-const MY_ACCOUNT_ID = AccountId.fromString(import.meta.env.VITE_HEDERA_ACCOUNT_ID!);
-const MY_PRIVATE_KEY = PrivateKey.fromStringECDSA(import.meta.env.VITE_HEDERA_PRIVATE_KEY!);
+const MY_ACCOUNT_ID = AccountId.fromString(
+  import.meta.env.VITE_HEDERA_ACCOUNT_ID!,
+);
+const MY_PRIVATE_KEY = PrivateKey.fromStringECDSA(
+  import.meta.env.VITE_HEDERA_PRIVATE_KEY!,
+);
 const RelayPage: React.FC = () => {
   const { isConnected, hederaAccountId } = useWalletTracking();
-  const [activeTab, setActiveTab] = useState<'queue' | 'history'>('queue');
+  const [activeTab, setActiveTab] = useState<"queue" | "history">("queue");
   const [showCreateRelayModal, setShowCreateRelayModal] = useState(false);
   const [relays, setRelays] = useState<RelayItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error" | "info">(
+    "info",
+  );
   const { sendTransactionAsync } = useSendTransaction();
 
   // Auto-hide toast after 3 seconds
@@ -48,13 +61,13 @@ const RelayPage: React.FC = () => {
 
   const loadRelays = async () => {
     if (!hederaAccountId) return;
-    
+
     setLoading(true);
     try {
       const relaysData = await relayService.getRelays(hederaAccountId);
       setRelays(relaysData);
     } catch (error) {
-      console.error('Error loading relays:', error);
+      console.error("Error loading relays:", error);
       setRelays([]);
     } finally {
       setLoading(false);
@@ -62,11 +75,17 @@ const RelayPage: React.FC = () => {
   };
 
   // Filter relays by status for queue vs history
-  const queueRelays = relays.filter(relay => 
-    relay.status !== 'Complete' && relay.status !== 'Rejected' && relay.status !== 'Expired'
+  const queueRelays = relays.filter(
+    (relay) =>
+      relay.status !== "Complete" &&
+      relay.status !== "Rejected" &&
+      relay.status !== "Expired",
   );
-  const historyRelays = relays.filter(relay => 
-    relay.status === 'Complete' || relay.status === 'Rejected' || relay.status === 'Expired'
+  const historyRelays = relays.filter(
+    (relay) =>
+      relay.status === "Complete" ||
+      relay.status === "Rejected" ||
+      relay.status === "Expired",
   );
   const handleCreateRelay = () => {
     setShowCreateRelayModal(true);
@@ -76,15 +95,19 @@ const RelayPage: React.FC = () => {
     setShowCreateRelayModal(false);
   };
 
-  const handleCreateRelaySubmit = async (receiverAddress: string, amount: string, expiresAt?: string) => {
+  const handleCreateRelaySubmit = async (
+    receiverAddress: string,
+    amount: string,
+    expiresAt?: string,
+  ) => {
     if (!hederaAccountId) return;
-    
+
     try {
       // Additional validation
       const numericAmount = parseFloat(amount);
       if (isNaN(numericAmount) || numericAmount <= 0) {
-        setToastMessage('Please enter a valid amount greater than 0.');
-        setToastType('error');
+        setToastMessage("Please enter a valid amount greater than 0.");
+        setToastType("error");
         setShowToast(true);
         return;
       }
@@ -102,7 +125,7 @@ const RelayPage: React.FC = () => {
         .setTopicMemo(relayTxJson)
         .freezeWith(client)
         .sign(MY_PRIVATE_KEY);
-      
+
       const submitTx = await tx.execute(client);
       const receipt = await submitTx.getReceipt(client);
       const topic_id = receipt.topicId!.toString();
@@ -115,163 +138,179 @@ const RelayPage: React.FC = () => {
         topic_id,
       );
 
-
-      
       if (newRelay) {
         setShowCreateRelayModal(false);
-        setToastMessage('Relay created successfully!');
-        setToastType('success');
+        loadRelays();
+        setActiveTab("queue");
+        setToastMessage("Relay created successfully!");
+        setToastType("success");
         setShowToast(true);
       } else {
-        console.error('Failed to create relay - no data returned');
-        setToastMessage('Failed to create relay. Please check your inputs and try again.');
-        setToastType('error');
+        console.error("Failed to create relay - no data returned");
+        setToastMessage(
+          "Failed to create relay. Please check your inputs and try again.",
+        );
+        setToastType("error");
         setShowToast(true);
       }
     } catch (error) {
-      console.error('Error creating relay:', error);
-      setToastMessage('Failed to create relay. Please check your connection and try again.');
-      setToastType('error');
+      console.error("Error creating relay:", error);
+      setToastMessage(
+        "Failed to create relay. Please check your connection and try again.",
+      );
+      setToastType("error");
       setShowToast(true);
     }
   };
 
-  const handleRelayAction = async (relayId: string, action: 'approve' | 'reject' | 'execute' | 'cancel') => {
+  const handleRelayAction = async (
+    relayId: string,
+    action: "approve" | "reject" | "execute" | "cancel",
+  ) => {
     if (!hederaAccountId) return;
-    
+
     try {
       let result = null;
       const client = Client.forTestnet();
       client.setOperator(MY_ACCOUNT_ID, MY_PRIVATE_KEY);
       // Fetch relay details to get receiverAddress
-      const relayDetails = relays.find(r => r.id === relayId);
+      const relayDetails = relays.find((r) => r.id === relayId);
       if (!relayDetails || !relayDetails.receiver_address) {
-        throw new Error('Receiver address not found for this relay.');
+        throw new Error("Receiver address not found for this relay.");
       }
       const senderAddress = relayDetails.sender_address;
       const receiverAddress = relayDetails.receiver_address;
       const amount = relayDetails.amount;
       const topicId = relayDetails.topic_id!;
 
-
       const getAccountByIdParams = {
-        idOrAliasOrEvmAddress: receiverAddress,       //Fill in the account ID or alias or EVM address
-         limit: 1,                              //Fill in the number of transactions to return
-         order: "desc",                          //Fill the result ordering
-       };
-          
-          //Get account by ID/alias/EVM address
+        idOrAliasOrEvmAddress: receiverAddress, //Fill in the account ID or alias or EVM address
+        limit: 1, //Fill in the number of transactions to return
+        order: "desc", //Fill the result ordering
+      };
+
+      //Get account by ID/alias/EVM address
       const getAccountByIdResponse = await fetch(
-        `https://testnet.mirrornode.hedera.com/api/v1/accounts/${getAccountByIdParams.idOrAliasOrEvmAddress}?limit=${getAccountByIdParams.limit}&order=${getAccountByIdParams.order}`
+        `https://testnet.mirrornode.hedera.com/api/v1/accounts/${getAccountByIdParams.idOrAliasOrEvmAddress}?limit=${getAccountByIdParams.limit}&order=${getAccountByIdParams.order}`,
       );
       const getAccountByIdResponseJson = await getAccountByIdResponse.json();
 
       const address = getAccountByIdResponseJson.evm_address; // Use the account ID from the response
-      
+
       switch (action) {
-        case 'approve':
-            const domain = {
-              name: "AegisProtocol",
-              version: "1",
-              chainId: 296,
-            };
+        case "approve":
+          const domain = {
+            name: "Continuum",
+            version: "1",
+            chainId: 296,
+          };
 
-            const types = {
-              EIP712Domain: [
-                { name: "name", type: "string" },
-                { name: "version", type: "string" },
-                { name: "chainId", type: "uint256" },
-              ],
-              RelayApproval: [
-                { name: "type", type: "string" },
-                { name: "amount", type: "uint256" },
-                { name: "topicId", type: "string" },
-                { name: "sender", type: "string" },
-                { name: "receiver", type: "string" },
-              ],
-            };
+          const types = {
+            EIP712Domain: [
+              { name: "name", type: "string" },
+              { name: "version", type: "string" },
+              { name: "chainId", type: "uint256" },
+            ],
+            RelayApproval: [
+              { name: "type", type: "string" },
+              { name: "amount", type: "uint256" },
+              { name: "topicId", type: "string" },
+              { name: "sender", type: "string" },
+              { name: "receiver", type: "string" },
+            ],
+          };
 
-            const value = {
-              type: "EIP712Domain",
-              amount: amount,
-              topicId: topicId,
-              sender: senderAddress,
-              receiver: receiverAddress,
-            };
+          const value = {
+            type: "EIP712Domain",
+            amount: amount,
+            topicId: topicId,
+            sender: senderAddress,
+            receiver: receiverAddress,
+          };
 
-            const signature = await window.ethereum.request({
-              method: "eth_signTypedData_v4",
-              params: [
-                window.ethereum.selectedAddress,
-                JSON.stringify({
-                  domain,
-                  types,
-                  primaryType: "RelayApproval",
-                  message: value,
-                }),
-              ],
-            });
+          const signature = await window.ethereum.request({
+            method: "eth_signTypedData_v4",
+            params: [
+              window.ethereum.selectedAddress,
+              JSON.stringify({
+                domain,
+                types,
+                primaryType: "RelayApproval",
+                message: value,
+              }),
+            ],
+          });
 
-            const approvalMessage = JSON.stringify({
-              sign_data: signature,
-              sign_type: "EIP712Domain",
-              status: "Approve",
-              signer_account_id: receiverAddress,
-              signer_evm_address: address,
-              sign_date: new Date().toISOString(),
-            });
+          const approvalMessage = JSON.stringify({
+            sign_data: signature,
+            sign_type: "EIP712Domain",
+            status: "Approve",
+            signer_account_id: receiverAddress,
+            signer_evm_address: address,
+            sign_date: new Date().toISOString(),
+          });
 
-            const txTopicMessageSubmit = new TopicMessageSubmitTransaction()
+          const txTopicMessageSubmit = new TopicMessageSubmitTransaction()
             .setTopicId(TopicId.fromString(topicId))
             .setMessage(approvalMessage);
           await txTopicMessageSubmit.execute(client);
 
           result = await relayService.approveRelay(relayId, hederaAccountId);
           break;
-        case 'reject':
+        case "reject":
           result = await relayService.rejectRelay(relayId, hederaAccountId);
           break;
-        case 'execute':
+        case "execute":
           try {
-
-              const value = parseEther(amount.toString());
-              const hash = await sendTransactionAsync({ to: address, value });
-              result = await relayService.executeRelay(relayId, hederaAccountId, hash);
-            } catch (err) {
-              console.error("Gagal mengirim transaksi:", err);
-            }
-            break;
-          case 'cancel':
-            result = await relayService.cancelRelay(relayId, hederaAccountId);
-            break;
-        }
+            const value = parseEther(amount.toString());
+            const hash = await sendTransactionAsync({ to: address, value });
+            result = await relayService.executeRelay(
+              relayId,
+              hederaAccountId,
+              hash,
+            );
+          } catch (err) {
+            console.error("Gagal mengirim transaksi:", err);
+          }
+          break;
+        case "cancel":
+          result = await relayService.cancelRelay(relayId, hederaAccountId);
+          break;
+      }
 
       if (result) {
+        loadRelays();
         setToastMessage(`Relay ${action}d successfully!`);
-        setToastType('success');
+        setToastType("success");
         setShowToast(true);
       } else {
         setToastMessage(`Failed to ${action} relay. Please try again.`);
-        setToastType('error');
+        setToastType("error");
         setShowToast(true);
       }
     } catch (error) {
       console.error(`Error ${action}ing relay:`, error);
       setToastMessage(`Failed to ${action} relay. Please try again.`);
-      setToastType('error');
+      setToastType("error");
       setShowToast(true);
     }
   };
 
   return (
     <div className="min-h-screen relative flex flex-col bg-[#F8F8F8]">
-      <AestheticNavbar 
-        leftLinkPath="/legacy"
-        leftLinkText="Legacy"
-        roomName="Relay"
-        rightLinkPath="/stream"
-        rightLinkText="Stream"
-      />
+      <Suspense
+        fallback={
+          <div className="h-16 bg-white shadow-sm w-full animate-pulse" />
+        }
+      >
+        <AestheticNavbar
+          leftLinkPath="/legacy"
+          leftLinkText="Legacy"
+          roomName="Relay"
+          rightLinkPath="/stream"
+          rightLinkText="Stream"
+        />
+      </Suspense>
       <main className="flex-1 px-4 sm:px-8 pt-0 pb-8">
         <div className="max-w-7xl mx-auto">
           {!isConnected ? (
@@ -282,7 +321,8 @@ const RelayPage: React.FC = () => {
                   Smart Way to Agree
                 </h2>
                 <p className="text-gray-600 mb-8 leading-relaxed">
-                  Relay enables synchronized smart transfers—no middleman, no delay.
+                  Relay enables synchronized smart transfers—no middleman, no
+                  delay.
                 </p>
                 <button
                   onClick={() => open()}
@@ -299,27 +339,27 @@ const RelayPage: React.FC = () => {
                 {/* Tab Navigation */}
                 <div className="flex space-x-1 bg-white/80 backdrop-blur-sm rounded-lg p-1 w-fit">
                   <button
-                    onClick={() => setActiveTab('queue')}
+                    onClick={() => setActiveTab("queue")}
                     className={`px-6 py-2 rounded-md font-medium transition-all duration-200 ${
-                      activeTab === 'queue'
-                        ? 'bg-black text-white shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                      activeTab === "queue"
+                        ? "bg-black text-white shadow-sm"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                     }`}
                   >
                     Queue
                   </button>
                   <button
-                    onClick={() => setActiveTab('history')}
+                    onClick={() => setActiveTab("history")}
                     className={`px-6 py-2 rounded-md font-medium transition-all duration-200 ${
-                      activeTab === 'history'
-                        ? 'bg-black text-white shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                      activeTab === "history"
+                        ? "bg-black text-white shadow-sm"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
                     }`}
                   >
                     History
                   </button>
                 </div>
-                
+
                 {/* Create Button */}
                 <button
                   onClick={handleCreateRelay}
@@ -338,37 +378,46 @@ const RelayPage: React.FC = () => {
                     <p className="text-gray-600">Loading relays...</p>
                   </div>
                 ) : (
-                  <RelayTable 
-                    data={activeTab === 'queue' ? queueRelays : historyRelays}
-                    currentWallet={hederaAccountId || ''}
-                    onRelayAction={handleRelayAction}
-                    itemsPerPage={10}
-                  />
+                  <Suspense
+                    fallback={
+                      <div className="bg-white rounded-lg shadow-lg p-12 text-center text-gray-400">
+                        Loading data...
+                      </div>
+                    }
+                  >
+                    <RelayTable
+                      data={activeTab === "queue" ? queueRelays : historyRelays}
+                      currentWallet={hederaAccountId || ""}
+                      onRelayAction={handleRelayAction}
+                      itemsPerPage={10}
+                    />
+                  </Suspense>
                 )}
               </div>
             </>
           )}
         </div>
       </main>
-      
+
       {/* Create Relay Modal */}
-      <CreateRelayModal
-        isOpen={showCreateRelayModal}
-        onClose={handleCloseCreateRelayModal}
-        onSubmit={handleCreateRelaySubmit}
-      />
-      
-      {/* Toast Notification */}
-      {showToast && (
-        <Toast
-          message={toastMessage}
-          type={toastType}
-          onClose={() => setShowToast(false)}
+      <Suspense fallback={null}>
+        <CreateRelayModal
+          isOpen={showCreateRelayModal}
+          onClose={() => setShowCreateRelayModal(false)}
+          onSubmit={handleCreateRelaySubmit}
         />
-      )}
+
+        {/* Toast Notification */}
+        {showToast && (
+          <Toast
+            message={toastMessage}
+            type={toastType}
+            onClose={() => setShowToast(false)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };
 
 export default RelayPage;
-
