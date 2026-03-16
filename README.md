@@ -6,7 +6,7 @@
 Continuum is the seamless flow of assets from one state or person to another — a new paradigm for how we manage and transfer wealth in the digital age.
 
 ## Pitch Deck
-Here's the pitch deck for Continuum: 👉[Continuum PDF]()
+Here's the pitch deck for Continuum: 👉[Continuum PDF](https://drive.google.com/drive/folders/1cz0PgOo5FPL-KTcBCzof0ExXN6uSV1P5?usp=sharing)
 
 # Features
 - Stream: Automate asset transfers with precise timing and logic, allowing users to stream wealth to designated recipients.
