@@ -116,6 +116,6 @@ You can also mention what license the project uses. I usually add it like this:
 Here's the demo video for ShowFarm👇
 <br> 
 
-[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi//0.jpg)]()
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/mT25_1Hl278/0.jpg)](https://www.youtube.com/watch?v=mT25_1Hl278)
 
 
